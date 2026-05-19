@@ -5,7 +5,7 @@
     <header class="view-head">
         <div>
             <h2>Dashboard Admin</h2>
-            <p>Contrôlez les annonces, les utilisateurs et la qualité du catalogue.</p>
+            <p>Contrôlez les annonces, les utilisateurs et la qualité du catalogue depuis un compte superuser Django.</p>
         </div>
         <span class="badge">Supervision globale</span>
     </header>
@@ -22,9 +22,14 @@
             <p class="card-trend">Catalogue disponible</p>
         </article>
         <article class="card">
-            <p class="card-label">Signalements</p>
-            <p class="card-value">1</p>
+            <p class="card-label">Signalements ouverts</p>
+            <p class="card-value">{{ open_reports }}</p>
             <p class="card-trend">À traiter</p>
+        </article>
+        <article class="card">
+            <p class="card-label">En attente</p>
+            <p class="card-value">{{ pending_annonces }}</p>
+            <p class="card-trend">À modérer</p>
         </article>
     </div>
 
@@ -41,12 +46,20 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for appartement in annonces_recentes %}
+                    {% for appartement in recent_appartements %}
                     <tr>
                         <td>{{ appartement.titre }}</td>
                         <td>{{ appartement.proprietaire.username }}</td>
                         <td>{{ appartement.quartier }}</td>
-                        <td><span class="status success">Publié</span></td>
+                        <td>
+                            {% if appartement.moderation_status == 'PENDING' %}
+                            <span class="status warning">En attente</span>
+                            {% elif appartement.moderation_status == 'REJECTED' %}
+                            <span class="status danger">Rejeté</span>
+                            {% else %}
+                            <span class="status success">Publié</span>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% empty %}
                     <tr>
@@ -69,10 +82,40 @@
             </div>
 
             <div class="panel">
-                <p class="panel-title">Note de supervision</p>
+                <p class="panel-title">Répartition des comptes</p>
                 <div class="panel-body">
-                    <p class="list-meta">Utilise ce tableau pour garder un contrôle rapide sur les annonces avant leur mise en avant.</p>
+                    <p class="list-meta">Clients: {{ total_clients }}</p>
+                    <p class="list-meta">Propriétaires: {{ total_proprietaires }}</p>
+                    <p class="list-meta">Superusers: {{ total_superusers }}</p>
                 </div>
+            </div>
+
+            <div class="panel">
+                <p class="panel-title">Signalements récents</p>
+                <div class="panel-body">
+                    {% if recent_signalements %}
+                        {% for signalement in recent_signalements %}
+                        <p class="list-meta">{{ signalement.appartement.titre }} - {{ signalement.auteur.username }} - {{ signalement.get_statut_display }}</p>
+                        {% endfor %}
+                    {% else %}
+                        <p class="list-meta">Aucun signalement récent.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-grid" style="margin-top: 16px;">
+        <div class="panel">
+            <p class="panel-title">Utilisateurs récents</p>
+            <div class="panel-body">
+                {% if recent_users %}
+                    {% for user in recent_users %}
+                    <p class="list-meta">{{ user.username }} - {{ user.get_role_display }}{% if user.is_superuser %} - superuser{% endif %}</p>
+                    {% endfor %}
+                {% else %}
+                    <p class="list-meta">Aucun utilisateur récent.</p>
+                {% endif %}
             </div>
         </div>
     </div>

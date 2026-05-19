@@ -8,7 +8,10 @@
             <h2>Panel de moderation</h2>
             <p>Validez les annonces, traitez les signalements et administrez les comptes.</p>
         </div>
-        <span class="badge">{{ pending_count }} annonces en attente</span>
+        <div class="btn-row">
+            <a href="{% url 'admin_dashboard' %}" class="link-reset"><button type="button" class="btn-secondary">Dashboard</button></a>
+            <span class="badge">{{ pending_count }} annonces en attente</span>
+        </div>
     </header>
 
     <div class="cards">

@@ -29,6 +29,8 @@ def login(request):
         if user:
             auth_login(request, user)
             messages.success(request, "Connexion réussie !")
+            if user.is_superuser:
+                return redirect('admin_dashboard')
             return redirect('feed')
         else:
             messages.error(request, "Identifiants incorrects")

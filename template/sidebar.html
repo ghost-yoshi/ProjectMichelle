@@ -19,8 +19,9 @@
                 <a href="{% url 'tenant_favorites' %}" data-spa="true">Favoris</a>
                 <a href="{% url 'messages' %}" data-spa="true">Conversations</a>
                 <a href="{% url 'logout' %}" class="nav-logout">Se deconnecter</a>
-                {% elif user.role == 'ADMIN' %}
+                {% elif user.is_superuser %}
                 <a href="{% url 'feed' %}" data-spa="true">Fil d'actualite</a>
+                <a href="{% url 'admin_dashboard' %}" data-spa="true">Dashboard admin</a>
                 <a href="{% url 'admin_review' %}" data-spa="true">Moderation</a>
                 <a href="{% url 'logout' %}" class="nav-logout">Se deconnecter</a>
                 {% endif %}
@@ -52,8 +53,9 @@
                 <a href="{% url 'tenant_favorites' %}" data-spa="true">Favoris</a>
                 <a href="{% url 'messages' %}" data-spa="true">Conversations</a>
                 <a href="{% url 'logout' %}" class="nav-logout">Se deconnecter</a>
-                {% elif user.role == 'ADMIN' %}
+                {% elif user.is_superuser %}
                 <a href="{% url 'feed' %}" data-spa="true">Fil d'actualite</a>
+                <a href="{% url 'admin_dashboard' %}" data-spa="true">Dashboard admin</a>
                 <a href="{% url 'admin_review' %}" data-spa="true">Moderation</a>
                 <a href="{% url 'logout' %}" class="nav-logout">Se deconnecter</a>
                 {% endif %}

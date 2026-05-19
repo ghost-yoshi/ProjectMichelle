@@ -14,8 +14,9 @@ from favoris.models import Favoris
 from message.models import Conversation, Message
 from user.forms import AdminUserForm
 from user.models import User
-from .models import Appartement, AppartementImage
+from .models import Appartement, AppartementImage, Signalement
 from .forms import SignalementForm
+from .utils import superuser_required
 
 
 def accueil(request):
@@ -72,7 +73,7 @@ def supprimer_appartement(request, id):
     """
     appartement = get_object_or_404(Appartement, id=id)
 
-    if request.user != appartement.proprietaire and request.user.role != 'ADMIN':
+    if request.user != appartement.proprietaire and not request.user.is_superuser:
         raise PermissionDenied
 
     appartement.delete()
@@ -87,14 +88,14 @@ def modifier_appartement(request, id):
     """
     appartement = get_object_or_404(Appartement, id=id)
 
-    if request.user != appartement.proprietaire and request.user.role != 'ADMIN':
+    if request.user != appartement.proprietaire and not request.user.is_superuser:
         raise PermissionDenied
 
     if request.method == 'POST':
         appartement.titre = request.POST.get('titre')
         appartement.prix = request.POST.get('prix')
         appartement.description = request.POST.get('description')
-        if request.user.role != 'ADMIN':
+        if not request.user.is_superuser:
             appartement.moderation_status = 'PENDING'
         appartement.save()
 
@@ -259,18 +260,34 @@ def dashboard_proprietaire(request):
 
 
 @login_required
+@superuser_required
 def admin_dashboard(request):
     """
     Display admin overview dashboard with system statistics.
     """
+    recent_appartements = Appartement.objects.select_related('proprietaire').prefetch_related('images').order_by('-date_publication')[:5]
+    recent_users = User.objects.order_by('-date_joined')[:5]
+    recent_signalements = Signalement.objects.select_related('appartement', 'auteur').order_by('-date_creation')[:5]
+
     total_users = User.objects.count()
+    total_clients = User.objects.filter(role='CLIENT').count()
+    total_proprietaires = User.objects.filter(role='PROPRIETAIRE').count()
+    total_superusers = User.objects.filter(is_superuser=True).count()
     total_annonces = Appartement.objects.count()
-    annonces_recentes = Appartement.objects.select_related('proprietaire').order_by('-date_publication')[:5]
+    pending_annonces = Appartement.objects.filter(moderation_status='PENDING').count()
+    open_reports = Signalement.objects.filter(statut='OPEN').count()
 
     return render(request, 'admin_dashboard.html', {
         'total_users': total_users,
+        'total_clients': total_clients,
+        'total_proprietaires': total_proprietaires,
+        'total_superusers': total_superusers,
         'total_annonces': total_annonces,
-        'annonces_recentes': annonces_recentes,
+        'pending_annonces': pending_annonces,
+        'open_reports': open_reports,
+        'recent_appartements': recent_appartements,
+        'recent_users': recent_users,
+        'recent_signalements': recent_signalements,
     })
 
 
@@ -282,14 +299,12 @@ def message(request):
 
 
 @login_required
+@superuser_required
 def admin_panel(request):
     """
     Administration panel for managing users, apartments, and reports.
     Handles approval/rejection of listings and resolution of user reports.
     """
-    if request.user.role != 'ADMIN' and not request.user.is_superuser:
-        raise PermissionDenied
-
     if request.method == 'POST':
         action = request.POST.get('action')
 
@@ -298,31 +313,31 @@ def admin_panel(request):
             if user_form.is_valid():
                 user_form.save()
                 messages.success(request, "Utilisateur créé avec succès.")
-                return redirect('admin_panel')
+                return redirect('admin_review')
         elif action == 'delete_user':
             target_user = get_object_or_404(User, id=request.POST.get('user_id'))
             if target_user != request.user and not target_user.is_superuser:
                 target_user.delete()
                 messages.success(request, "Utilisateur supprimé.")
-                return redirect('admin_panel')
+                return redirect('admin_review')
         elif action in {'approve_appartement', 'reject_appartement'}:
             appartement = get_object_or_404(Appartement, id=request.POST.get('appartement_id'))
             appartement.moderation_status = 'APPROVED' if action == 'approve_appartement' else 'REJECTED'
             appartement.save(update_fields=['moderation_status'])
             messages.success(request, "Statut de l'annonce mis à jour.")
-            return redirect('admin_panel')
+            return redirect('admin_review')
         elif action in {'review_signalement', 'resolve_signalement'}:
-            signalement = get_object_or_404(Appartement.signalements.rel.model, id=request.POST.get('signalement_id'))
+            signalement = get_object_or_404(Signalement, id=request.POST.get('signalement_id'))
             signalement.statut = 'REVIEWED' if action == 'review_signalement' else 'RESOLVED'
             signalement.note_admin = request.POST.get('note_admin', signalement.note_admin)
             signalement.save(update_fields=['statut', 'note_admin'])
             messages.success(request, "Signalement traité.")
-            return redirect('admin_panel')
+            return redirect('admin_review')
 
     user_form = AdminUserForm(prefix='user')
     pending_appartements = Appartement.objects.filter(moderation_status='PENDING').select_related('proprietaire').prefetch_related('images').order_by('-date_publication')
     recent_appartements = Appartement.objects.select_related('proprietaire').prefetch_related('images').order_by('-date_publication')[:10]
-    signalements = Appartement.signalements.rel.model.objects.select_related('appartement', 'auteur').order_by('-date_creation')[:10]
+    signalements = Signalement.objects.select_related('appartement', 'auteur').order_by('-date_creation')[:10]
     users = User.objects.order_by('-date_joined')
 
     return render(request, 'admin_review.html', {

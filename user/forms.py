@@ -121,6 +121,10 @@ class AdminUserForm(forms.Form):
             password=self.cleaned_data['password'],
             role=self.cleaned_data['role'],
         )
+        is_admin = self.cleaned_data['role'] == 'ADMIN'
+        user.is_staff = is_admin
+        user.is_superuser = is_admin
+        user.save(update_fields=['is_staff', 'is_superuser'])
         Profile.objects.create(
             user=user,
             phoneNuber=self.cleaned_data.get('phone', ''),
